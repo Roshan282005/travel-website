@@ -46,8 +46,9 @@ build/Release
 
 # Dependency directories
 node_modules/
+/vendor/
 
-# Optional npm cache directory
+# Optional npm cache
 .npm
 
 # Optional eslint cache
@@ -67,9 +68,3 @@ node_modules/
 
 # dataconnect generated files
 .dataconnect
-
-
-.setting.json
-"chatgpt.gpt3.apiKey": "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",
-"chatgpt.gpt3.model": "chatgpt-4o-latest",
-"chatgpt.gpt3.provider": "OpenAI",
