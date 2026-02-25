@@ -1,0 +1,153 @@
+name: Azure Deployment
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+
+env:
+  AZURE_ENV_NAME: travelgo-prod
+  AZURE_LOCATION: eastus
+
+jobs:
+  provision:
+    name: Provision Infrastructure
+    runs-on: ubuntu-latest
+    environment: azure-prod
+    outputs:
+      app_service_name: ${{ steps.outputs.outputs.app_service_name }}
+      resource_group: ${{ steps.outputs.outputs.resource_group }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Azure CLI
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Install Azure Developer CLI
+        run: |
+          curl -fsSL https://aka.ms/install-azd.sh | bash
+
+      - name: Create Resource Group
+        run: |
+          az group create \
+            --name rg-${{ env.AZURE_ENV_NAME }} \
+            --location ${{ env.AZURE_LOCATION }}
+
+      - name: Deploy Infrastructure (Bicep)
+        run: |
+          az deployment group create \
+            --resource-group rg-${{ env.AZURE_ENV_NAME }} \
+            --template-file infra/main.bicep \
+            --parameters infra/main.parameters.json \
+            --parameters environmentName=${{ env.AZURE_ENV_NAME }} \
+            --parameters location=${{ env.AZURE_LOCATION }} \
+            --parameters mysqlAdminPassword=${{ secrets.MYSQL_ADMIN_PASSWORD }}
+
+      - name: Get Deployment Outputs
+        id: outputs
+        run: |
+          outputs=$(az deployment group show \
+            --name main \
+            --resource-group rg-${{ env.AZURE_ENV_NAME }} \
+            --query properties.outputs)
+          
+          app_service=$(echo "$outputs" | jq -r '.appServiceName.value')
+          echo "app_service_name=$app_service" >> $GITHUB_OUTPUT
+          echo "resource_group=rg-${{ env.AZURE_ENV_NAME }}" >> $GITHUB_OUTPUT
+
+  deploy:
+    name: Deploy Application
+    needs: provision
+    runs-on: ubuntu-latest
+    environment: azure-prod
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: curl, mysql, mbstring, xml, json
+          tools: composer
+
+      - name: Install PHP Dependencies
+        run: composer install --no-dev --optimize-autoloader
+
+      - name: Create Deployment Package
+        run: |
+          zip -r application.zip . -x ".git/*" ".github/*" "infra/*" "node_modules/*" ".env*"
+
+      - name: Set up Azure CLI
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy to App Service
+        run: |
+          az webapp deployment source config-zip \
+            --resource-group ${{ needs.provision.outputs.resource_group }} \
+            --name ${{ needs.provision.outputs.app_service_name }} \
+            --src application.zip
+
+      - name: Configure App Service Settings
+        run: |
+          az webapp config appsettings set \
+            --resource-group ${{ needs.provision.outputs.resource_group }} \
+            --name ${{ needs.provision.outputs.app_service_name }} \
+            --settings \
+              MYSQL_PASSWORD=${{ secrets.MYSQL_ADMIN_PASSWORD }} \
+              MYSQL_HOST=$(az deployment group show \
+                --name main \
+                --resource-group ${{ needs.provision.outputs.resource_group }} \
+                --query properties.outputs.mysqlServerName.value -o tsv).mysql.database.azure.com \
+              MYSQL_USER=azureuser \
+              MYSQL_DATABASE=travel_db
+
+  validate:
+    name: Validate Deployment
+    needs: [provision, deploy]
+    runs-on: ubuntu-latest
+    environment: azure-prod
+    steps:
+      - name: Set up Azure CLI
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Get App Service URL
+        run: |
+          url=$(az webapp show \
+            --resource-group ${{ needs.provision.outputs.resource_group }} \
+            --name ${{ needs.provision.outputs.app_service_name }} \
+            --query defaultHostName -o tsv)
+          echo "Application URL: https://$url"
+
+      - name: Health Check
+        run: |
+          url=$(az webapp show \
+            --resource-group ${{ needs.provision.outputs.resource_group }} \
+            --name ${{ needs.provision.outputs.app_service_name }} \
+            --query defaultHostName -o tsv)
+          
+          # Wait for app to be ready
+          for i in {1..30}; do
+            if curl -f -s https://$url/index.php > /dev/null; then
+              echo "✓ Application is healthy"
+              exit 0
+            fi
+            echo "Attempt $i/30: Waiting for application to be ready..."
+            sleep 10
+          done
+          
+          echo "✗ Application health check failed"
+          exit 1

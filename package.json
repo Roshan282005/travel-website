@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "@dataconnect/generated": "file:dataconnect-generated/js/example-connector",
+    "leaflet": "^1.9.4",
+    "leaflet-routing-machine": "^3.2.12",
+    "leaflet.markercluster": "^1.5.3",
+    "react-leaflet": "^5.0.0"
+  }
+}

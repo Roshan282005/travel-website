@@ -1,0 +1,35 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/refs/heads/main/schemas/v1.0/azure.yaml.json
+name: travelgo
+metadata:
+  template: travelgo-php-mysql@1.0.0
+  description: TravelGo - Travel booking platform with PHP backend and MySQL database
+
+services:
+  api:
+    project: ./
+    language: php
+    host: appservice
+
+  database:
+    project: ./
+    language: bicep
+    host: bicep
+
+variables:
+  AZURE_LOCATION: eastus
+  AZURE_RESOURCE_GROUP: rg-${AZURE_ENV_NAME}
+
+hooks:
+  prereqs:
+    shell: pwsh
+    run: |
+      Write-Host "Checking Azure CLI and azd prerequisites..."
+      if (-not (Get-Command az -ErrorAction SilentlyContinue)) {
+        Write-Error "Azure CLI is not installed. Visit https://learn.microsoft.com/cli/azure/install-azure-cli"
+        exit 1
+      }
+      if (-not (Get-Command azd -ErrorAction SilentlyContinue)) {
+        Write-Error "Azure Dev CLI is not installed. Visit https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd"
+        exit 1
+      }
+      Write-Host "Prerequisites check passed!"

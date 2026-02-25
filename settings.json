@@ -1,0 +1,34 @@
+{
+    "files.autoSave": "afterDelay",
+    "php.validate.executablePath": "D:/xampp/htdocs",
+    "redhat.telemetry.enabled": true,
+    "terminal.integrated.commandsToSkipShell": [
+        ""
+    ],
+    "window.newWindowProfile": "Default",
+    "editor.inlineSuggest.showToolbar": "always",
+    "git.autofetch": true,
+    "workbench.editor.empty.hint": "hidden",
+    "chatgpt.gpt3.apiKey": "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",
+    "chatgpt.gpt3.model": "chatgpt-4o-latest",
+    "chatgpt.gpt3.provider": "OpenAI",
+    "database-client.autoSync": true,
+    "genieai.enableConversationHistory": true,
+    "terminal.integrated.allowedLinkSchemes": [
+        "file",
+        "http",
+        "https",
+        "mailto",
+        "vscode",
+        "vscode-insiders",
+        "ms-settings"
+    ],
+    "workbench.settings.applyToAllProfiles": [
+
+    ],
+    "gocodeo.hasShownWalkthrough": true,
+    "gocodeo.authToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3ODg3NjQ0ODEsImlhdCI6MTc1NzIyODQ4MSwic3ViIjoiNjhiZDJkYzEzN2Y5YWZmYjI0YjhkZGIxIiwiZW1haWwiOiJnYW1pbmd0aGFsYWl2YW5yb2xsc3Jvc2hhbkBnbWFpbC5jb20ifQ.7RjMbbCyHq6-jzOoZTBG3gG8-bK0Uk6SQYYUPZZ265E",
+    "mdb.mcp.server": "enabled",
+    "chat.mcp.autostart": "newAndOutdated",
+    "tabnine.experimentalAutoImports": true
+}
